@@ -4,3 +4,4 @@ project(qxidc)
 set(CMAKE_CXX_STANDARD 98)
 
 add_subdirectory(idc)
+add_subdirectory(tools)
