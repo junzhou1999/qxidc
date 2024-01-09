@@ -4,7 +4,7 @@ project(qxidc)
 set(CMAKE_CXX_STANDARD 98)
 
 # 自定义变量
-set(PUBINCL /project/public)
+set(PUBINCL ../public)
 set(PUBCPP ../public/_public.cpp)
 
 # 相当于g++ -I选项
