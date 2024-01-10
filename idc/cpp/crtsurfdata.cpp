@@ -7,6 +7,9 @@
 
 CLogFile logfile;
 
+// 全局对象，exit()对于临时对象可以调用析构函数
+CFile file;
+
 // 站点结构体
 struct st_stcode
 {
@@ -115,7 +118,6 @@ int main(int argc, char *argv[])
  */
 bool LoadStCode(const char *inifile)
 {
-  CFile file;
   // 打开文件
   if (file.Open(inifile, "r") == false)
   {
@@ -210,7 +212,7 @@ bool CrtSurfFile(const char *outpath, const char *datafmt)
            outpath, strddatetime, getpid(), datafmt);
 
   // 打开文件，目录不存在回自动创建目录
-  CFile file;
+
   // OpenForRename为了避免生成数据文件时被读到不完整的数据
   if (file.OpenForRename(strFileName, "w") == false)
   {
@@ -257,7 +259,8 @@ bool CrtSurfFile(const char *outpath, const char *datafmt)
 
   if (strcmp(datafmt, "xml") == 0) file.Fprintf("</data>\n");
   if (strcmp(datafmt, "json") == 0) file.Fprintf("]}\n");
-  sleep(10);
+//sleep(10);
+
   // 关闭文件
   file.CloseAndRename();
 
