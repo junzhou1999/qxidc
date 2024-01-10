@@ -49,6 +49,9 @@ void CrtSurfData();
 // 观测数据写入到文件中
 bool CrtSurfFile(const char *outpath, const char *datafmt);
 
+// 信号2和15的处理函数
+void EXIT(int sig);
+
 int main(int argc, char *argv[])
 {
   // ini outpath log datafmt [datetime]
@@ -68,6 +71,11 @@ int main(int argc, char *argv[])
 
     return -1;
   }
+
+  // 处理信号以及关闭执行到这里的012描述符，需要放在打开日志前
+  CloseIOAndSignal(true);
+  signal(SIGINT, EXIT);
+  signal(SIGTERM, EXIT);
 
   if (logfile.Open(argv[3]) == false)
   {
@@ -249,7 +257,7 @@ bool CrtSurfFile(const char *outpath, const char *datafmt)
 
   if (strcmp(datafmt, "xml") == 0) file.Fprintf("</data>\n");
   if (strcmp(datafmt, "json") == 0) file.Fprintf("]}\n");
-
+  sleep(10);
   // 关闭文件
   file.CloseAndRename();
 
@@ -259,4 +267,10 @@ bool CrtSurfFile(const char *outpath, const char *datafmt)
   logfile.Write("生成数据文件%s，数据时间：%s，数据记录%d条。\n", strFileName, strddatetime, vsurfdata.size());
 
   return true;
+}
+
+void EXIT(int sig)
+{
+  logfile.Write("收到信号%d，程序退出。\n", sig);
+  exit(0);  // exit函数会析构全局的对象
 }
