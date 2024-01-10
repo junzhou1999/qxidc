@@ -55,6 +55,9 @@ bool CrtSurfFile(const char *outpath, const char *datafmt);
 // 信号2和15的处理函数
 void EXIT(int sig);
 
+// 进程心跳对象
+CPActive pActive;
+
 int main(int argc, char *argv[])
 {
   // ini outpath log datafmt [datetime]
@@ -64,7 +67,9 @@ int main(int argc, char *argv[])
     printf(
         "Example:/project/idc/bin/crtsurfdata /project/idc/ini/stcode.ini /tmp/idc /logs/idc/crtsurfdata.log csv,xml,json\n");
     printf(
-        "Example:/project/idc/bin/crtsurfdata /project/idc/ini/stcode.ini /tmp/idc /logs/idc/crtsurfdata.log csv 20240101120000\n");
+        "Example:/project/tools/bin/procctl 60 /project/idc/bin/crtsurfdata /project/idc/ini/stcode.ini /tmp/idc /logs/idc/crtsurfdata.log csv,xml,json\n");
+    printf(
+        "Example:/project/idc/bin/crtsurfdata /project/idc/ini/stcode.ini /tmp/idc /logs/idc/crtsurfdata.log csv 20240101120000\n\n");
 
     printf("inifile 全国气象站点参数文件名。\n");
     printf("outpath 全国气象站点观测数据文件存放的目录。\n");
@@ -79,6 +84,10 @@ int main(int argc, char *argv[])
   CloseIOAndSignal(true);
   signal(SIGINT, EXIT);
   signal(SIGTERM, EXIT);
+
+  // 本程序很快就执行完毕，不用更新心跳时间
+  pActive.AddPInfo(20, "crtsurfdata");
+  sleep(20);
 
   if (logfile.Open(argv[3]) == false)
   {
