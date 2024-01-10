@@ -8,7 +8,7 @@ set(PUBINCL ../public)
 set(PUBCPP ../public/_public.cpp)
 
 # 相当于g++ -I选项
-# include_directories(${PUBINCL})
+ include_directories(${PUBINCL})
 # 输出到指定目录
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 # 编译选项
@@ -17,3 +17,4 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 add_executable(book1 cpp/book1.cpp)
 add_executable(book2 cpp/book2.cpp)
 add_executable(bbook2 cpp/bbook2.cpp)
+add_executable(book3 cpp/book3.cpp ${PUBCPP})
