@@ -5,3 +5,4 @@ set(CMAKE_CXX_STANDARD 98)
 
 add_subdirectory(idc)
 add_subdirectory(tools)
+add_subdirectory(demo)
