@@ -15,3 +15,5 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 # set(CMAKE_CXX_FLAGS "-lm -lc")
 
 add_executable(book1 cpp/book1.cpp)
+add_executable(book2 cpp/book2.cpp)
+add_executable(bbook2 cpp/bbook2.cpp)
