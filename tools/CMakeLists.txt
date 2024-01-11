@@ -16,3 +16,4 @@ set(CMAKE_CXX_FLAGS "-lm -lc")
 
 add_executable(procctl cpp/procctl.cpp)
 add_executable(checkproc cpp/checkproc.cpp ${PUBCPP})
+add_executable(gzipfiles cpp/gzipfiles.cpp ${PUBCPP})
