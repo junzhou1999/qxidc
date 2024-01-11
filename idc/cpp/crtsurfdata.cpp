@@ -65,11 +65,11 @@ int main(int argc, char *argv[])
   {
     printf("Using:./crtsurfdata inifile outpath logfile datafmt [datetime]\n");
     printf(
-        "Example:/project/idc/bin/crtsurfdata /project/idc/ini/stcode.ini /tmp/idc /logs/idc/crtsurfdata.log csv,xml,json\n");
+        "Example:/project/idc/bin/crtsurfdata /project/idc/ini/stcode.ini /tmp/idc/surfdata /logs/idc/crtsurfdata.log csv,xml,json\n");
     printf(
-        "Example:/project/tools/bin/procctl 60 /project/idc/bin/crtsurfdata /project/idc/ini/stcode.ini /tmp/idc /logs/idc/crtsurfdata.log csv,xml,json\n");
+        "Example:/project/tools/bin/procctl 60 /project/idc/bin/crtsurfdata /project/idc/ini/stcode.ini /tmp/idc/surfdata /logs/idc/crtsurfdata.log csv,xml,json\n");
     printf(
-        "Example:/project/idc/bin/crtsurfdata /project/idc/ini/stcode.ini /tmp/idc /logs/idc/crtsurfdata.log csv 20240101120000\n\n");
+        "Example:/project/idc/bin/crtsurfdata /project/idc/ini/stcode.ini /tmp/idc/surfdata /logs/idc/crtsurfdata.log csv 20240101120000\n\n");
 
     printf("inifile 全国气象站点参数文件名。\n");
     printf("outpath 全国气象站点观测数据文件存放的目录。\n");
