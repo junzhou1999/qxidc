@@ -75,3 +75,9 @@
 ## 使用sql语句更新表数据
 
 * prepare，然后绑定序号
+
+## 使用sql语句查询表数据
+
+* prepare->bindin/bindout->execute->next循环
+* MySQL对于日期型的值，str_to_date()函数可以对其输入字符串
+* date_format()可以输出字符串
