@@ -81,3 +81,6 @@
 * prepare->bindin/bindout->execute->next循环
 * MySQL对于日期型的值，str_to_date()函数可以对其输入字符串
 * date_format()可以输出字符串
+
+## 使用sql语句删除表数据
+
