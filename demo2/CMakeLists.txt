@@ -25,6 +25,8 @@ add_executable(inserttable inserttable.cpp ${_MYSQLCPP})
 add_executable(updatetable updatetable.cpp ${_MYSQLCPP})
 add_executable(selecttable selecttable.cpp ${_MYSQLCPP})
 add_executable(deletetable deletetable.cpp ${_MYSQLCPP})
+add_executable(filetoblob filetoblob.cpp ${_MYSQLCPP})
+add_executable(dbblobtofile dbblobtofile.cpp ${_MYSQLCPP})
 
 # 链接动态库
 TARGET_LINK_LIBRARIES(createtable libmysqlclient.so)
@@ -32,6 +34,8 @@ TARGET_LINK_LIBRARIES(inserttable libmysqlclient.so)
 TARGET_LINK_LIBRARIES(updatetable libmysqlclient.so)
 TARGET_LINK_LIBRARIES(selecttable libmysqlclient.so)
 TARGET_LINK_LIBRARIES(deletetable libmysqlclient.so)
+TARGET_LINK_LIBRARIES(filetoblob libmysqlclient.so)
+TARGET_LINK_LIBRARIES(dbblobtofile libmysqlclient.so)
 
 # 先引用目录，在引用源代码和库文件
 # g++ -g -o createtable createtable.cpp -I${_MYSQLINCL} -I${MYSQLINCL} $(_MYSQLCPP) -Llibmysqlclient.so
