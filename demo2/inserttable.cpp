@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
   {
     long id;         // 超女编号
     char name[30];   // 姓名
-    double weight;   // 体重
+    char weight[9];   // 体重
     char btime[20];  // 出生时间
   } stgirl;
 
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
   // 绑定只是单纯替换了(:序号)这一环节，其他的部分也可以用在函数中，或者再加上运算
   stmt.bindin(1, &stgirl.id);
   stmt.bindin(2, stgirl.name, 29);
-  stmt.bindin(3, &stgirl.weight);
+  stmt.bindin(3, stgirl.weight, 9);
   stmt.bindin(4, stgirl.btime, 19);
 
   for (int ii = 0; ii < 5; ii++)
@@ -43,7 +43,10 @@ int main(int argc, char *argv[])
 
     stgirl.id = ii + 1000;
     sprintf(stgirl.name, "西施%05d号girl", ii + 1);
-    stgirl.weight = 52 + (double) ii / 10;
+
+    // 框架内空字符串就是null值
+    if (ii >= 3) sprintf(stgirl.weight, "%.2lf", 52.0 + (double) ii / 10);
+
     sprintf(stgirl.btime, "2024-03-05 18:29:%2d", ii);
 
     if (stmt.execute() != 0)
