@@ -6,10 +6,13 @@
 #/project/tools/bin/procctl 30 /project/tools/bin/checkproc
 
 # 压缩数据中心后台服务程序的备份日志。
-/project/tools/bin/procctl 300 /project/tools/bin/gzipfiles /logs/idc "*.log.20*" 0.02
+/project/tools/bin/procctl 300 /project/tools/bin/gzipfiles /logs/idc "*.log.20*" 0.01
 
 # 生成用于测试的全国气象站点观测的分钟数据。
 /project/tools/bin/procctl 60 /project/idc/bin/crtsurfdata /project/idc/ini/stcode.ini /tmp/idc/surfdata /logs/idc/crtsurfdata.log xml,json,csv
 
 # 清理原始的全国气象站点观测的分钟数据目录/tmp/idc/surfdata中的历史数据文件。
 /project/tools/bin/procctl 300 /project/tools/bin/deletefiles /tmp/idc/surfdata "*" 0.02
+
+# 假设站点数据是会改变的，那么就需要每隔一定时间来更新
+/project/tools/bin/procctl 120 /project/idc/bin/obtcodetodb /project/idc/ini/stcode.ini "192.168.0.74,qxidc,qxidcpwd,db_qxidc,3306" utf8 /logs/idc/obtcodetodb.log
