@@ -105,3 +105,12 @@
 * 如超时，则kill掉
 * 1；这个添加进数据库的操作有一个记录时间字段，记录用户插入或者更新站点数据的元组
 * 2；引用了Mysql的库文件
+
+## 把站点观测数据XML放到数据库中
+
+* primary key (obtid, ddatetime)和IDX_ZHOBTMIND_1 (ddatetime, obtid)的区别
+* where obtid=:1 and ddatetime=:2 查询时用主键
+* where ddatetime=:1 and obtid=:2 查询时用索引
+* statement的初始化需要connection对象，这点需要注意
+* 理解好观测数据和数据库数据格式的转换
+

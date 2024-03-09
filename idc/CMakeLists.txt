@@ -23,5 +23,7 @@ link_directories(${MYSQLLIB})
 
 add_executable(crtsurfdata cpp/crtsurfdata.cpp ${PUBCPP})
 add_executable(obtcodetodb cpp/obtcodetodb.cpp ${PUBCPP} ${_MYSQLCPP})
+add_executable(obtmindtodb cpp/obtmindtodb.cpp ${PUBCPP} ${_MYSQLCPP})
 
 target_link_libraries(obtcodetodb mysqlclient)
+target_link_libraries(obtmindtodb mysqlclient)
