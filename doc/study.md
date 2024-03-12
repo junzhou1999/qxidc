@@ -129,3 +129,10 @@
 * 内置的命令行：mysql -uroot -ppwd -Ddb_qxidc < xxx.sql
 * 执行shell工具不支持输入重定向
 * 所以编写一个读取sql文件然后执行这些个语句
+
+## cmake编译ftp静态库
+
+* 因为ftp库在clion没有可执行的入口，所以编译只能在Linux中手打
+* 在任意一个 CMakeLists.txt的目录下：
+* cmake --build {outputpath} [--target targetname]
+* 静态库的输出目录配置在具体的CMakeLists.txt中
