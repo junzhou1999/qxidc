@@ -3,8 +3,8 @@
 ####################################################################
 
 killall -9 procctl
-killall gzipfiles crtsurfdata deletefiles obtcodetodb
+killall gzipfiles crtsurfdata deletefiles obtcodetodb obtmindtodb execsql
 
 sleep 3
 
-killall -9 gzipfiles crtsurfdata deletefiles obtcodetodb
+killall -9 gzipfiles crtsurfdata deletefiles obtcodetodb obtmindtodb execsql

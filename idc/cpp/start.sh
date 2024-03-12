@@ -16,3 +16,9 @@
 
 # 假设站点数据是会改变的，那么就需要每隔一定时间来更新
 /project/tools/bin/procctl 120 /project/idc/bin/obtcodetodb /project/idc/ini/stcode.ini "192.168.0.74,qxidc,qxidcpwd,db_qxidc,3306" utf8 /logs/idc/obtcodetodb.log
+
+# 将站点观测数据入库，只有插入没有更新操作
+/project/tools/bin/procctl 120 /project/idc/bin/obtmindtodb /tmp/idc/surfdata "192.168.0.74,qxidc,qxidcpwd,db_qxidc,3306" utf8 /logs/idc/obtmindtodb.log
+
+# 定期清理入库的观测数据
+/project/tools/bin/procctl 120 /project/tools/bin/execsql /project/idc/sql/cleardata.sql "192.168.0.74,qxidc,qxidcpwd,db_qxidc,3306" utf8 /logs/tools/execsql.log
