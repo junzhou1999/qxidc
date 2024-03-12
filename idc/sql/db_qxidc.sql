@@ -49,28 +49,27 @@ alter table T_ZHOBTMIND comment '本表存放了设备观测到的全国气象�
 /* Index: IDX_ZHOBTMIND_1                                       */
 /*==============================================================*/
 create unique index IDX_ZHOBTMIND_1 on T_ZHOBTMIND
-    (
-     ddatetime,
-     obtid
-        );
+(
+    ddatetime,
+    obtid
+);
 
 /*==============================================================*/
 /* Index: IDX_ZHOBTMIND_2                                       */
 /*==============================================================*/
 create index IDX_ZHOBTMIND_2 on T_ZHOBTMIND
-    (
-     ddatetime
-        );
+(
+    ddatetime
+);
 
 /*==============================================================*/
 /* Index: IDX_ZHOBTMIND_3                                       */
 /*==============================================================*/
 create index IDX_ZHOBTMIND_3 on T_ZHOBTMIND
-    (
-     obtid
-        );
+(
+    obtid
+);
 
-alter table T_ZHOBTMIND
-    add constraint FK_ZHOBTMIND_ZHOBTCODE foreign key (obtid)
-        references T_ZHOBTCODE (obtid) on delete restrict on update restrict;
+alter table T_ZHOBTMIND add constraint FK_ZHOBTMIND_ZHOBTCODE
+    foreign key(obtid) references T_ZHOBTCODE (obtid) on delete restrict on update restrict;
 
