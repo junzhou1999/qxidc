@@ -8,6 +8,9 @@
 
 CLogFile logfile;
 
+// 程序主函数
+bool _ftpgetfiles();
+
 Cftp ftp;  // ftp服务类
 
 CDir dir;  // 文件服务类
@@ -27,6 +30,14 @@ struct st_arg
 
 // xml参数解析
 bool _xml2arg(const char *argxml);
+
+struct st_fileinfo
+{
+  char filename[301];
+  char mtime[21];
+};
+
+vector<struct st_fileinfo> vfilelist;
 
 // 程序帮助文档
 void _help();
@@ -58,12 +69,72 @@ int main(int argc, char *argv[])
   }
 
   // 登录ftp
+  if (ftp.login(starg.hostname, starg.username, starg.password, starg.mode) == false)
+  {
+    logfile.Write("ftp.login(%s,%s,%s,%s) failed.\n", starg.hostname, starg.username, starg.password,
+                  starg.mode == 1 ? "Passive" : "Active");
+    return -1;
+  }
 
-  // 打开主机目录，列出远程目录
-
-  // 发送文件...
+  _ftpgetfiles();
 
   return 0;
+}
+
+// 程序主函数
+bool _ftpgetfiles()
+{
+  // 打开远程主机目录
+  if (ftp.chdir(starg.remotepath) == false)
+  {
+    logfile.Write("ftp.chdir(%s) failed.\n", starg.remotepath);
+    return false;
+  }
+
+  // 读取文件列表，listfilename需要在本地有权限
+  if (ftp.nlist(".", starg.listfilename) == false)
+  {
+    logfile.Write("ftp.nlist(%s) failed.\n", starg.remotepath);
+    return false;
+  }
+
+  // 读取文件列表
+  CFile file;
+  if (file.Open(starg.listfilename, "r") == false)
+  {
+    logfile.Write("file.Open(%s) failed.\n", starg.listfilename);
+    return false;
+  }
+
+  struct st_fileinfo fileinfo;
+  while (true)
+  {
+    memset(&fileinfo, 0, sizeof(struct st_fileinfo));
+
+    // 读取文件名
+    if (file.Fgets(fileinfo.filename, 300, true) == false) break;
+
+    // 筛选
+    if (MatchStr(fileinfo.filename, starg.matchname) == false) continue;
+
+    vfilelist.push_back(fileinfo);
+  }
+
+  // 拉取文件
+  char remotefilename[301], localfilename[301];
+  for (int ii = 0; ii < vfilelist.size(); ii++)
+  {
+    SNPRINTF(remotefilename, sizeof(remotefilename), 300, "%s/%s", starg.remotepath, vfilelist[ii].filename);
+    SNPRINTF(localfilename, sizeof(remotefilename), 300, "%s/%s", starg.localpath, vfilelist[ii].filename);
+    logfile.Write("get %s ... ", remotefilename);
+    if (ftp.get(remotefilename, localfilename) == false)
+    {
+      logfile.WriteEx("failed.\n");
+      continue;
+    }
+    logfile.WriteEx("ok.\n");
+  }
+
 }
 
 // 程序帮助文档
