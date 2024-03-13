@@ -136,3 +136,8 @@
 * 在任意一个 CMakeLists.txt的目录下：
 * cmake --build {outputpath} [--target targetname]
 * 静态库的输出目录配置在具体的CMakeLists.txt中
+
+### ftpgetfiles:将XML参数解析到程序中
+
+* ftp下载的检验是通过文件的时间是否相一致来判断文件正确性，同样的aaa和bbb它们的大小是一样的，无法比较
+* 而服务器上传的过程保证了文件不会发生变化，那么只需要比较文件的大小就可以
