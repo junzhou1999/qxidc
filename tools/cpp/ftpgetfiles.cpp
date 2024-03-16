@@ -25,7 +25,9 @@ struct st_arg
   char remotepath[301];     // 远程登录的文件目录。
   char matchname[101];      // 在远程目录匹配需要下载的文件名。
   char listfilename[301];   // 存储下载前列出服务器的文件清单的文件名
-  char okfilename[301];     // 存储在本地的本次ftp下载信息，每次下载会追加文件内容，ptype为1生效。
+//  char okfilename[301];     // 存储在本地的本次ftp下载信息，每次下载会追加文件内容，ptype为1生效。
+  unsigned int ptype;       // 传输完成后服务器对文件的操作，1：什么也不做；2：删除；3-拷贝备份到remotepathbak目录。
+  char remotepathbak[301];  // ftp服务器的文件备份目录
 } starg;
 
 // xml参数解析
@@ -121,18 +123,42 @@ bool _ftpgetfiles()
   }
 
   // 拉取文件
-  char remotefilename[301], localfilename[301];
+  char strremotefilename[301], strlocalfilename[301];
   for (int ii = 0; ii < vfilelist.size(); ii++)
   {
-    SNPRINTF(remotefilename, sizeof(remotefilename), 300, "%s/%s", starg.remotepath, vfilelist[ii].filename);
-    SNPRINTF(localfilename, sizeof(remotefilename), 300, "%s/%s", starg.localpath, vfilelist[ii].filename);
-    logfile.Write("get %s ... ", remotefilename);
-    if (ftp.get(remotefilename, localfilename) == false)
+    SNPRINTF(strremotefilename, sizeof(strremotefilename), 300, "%s/%s", starg.remotepath, vfilelist[ii].filename);
+    SNPRINTF(strlocalfilename, sizeof(strremotefilename), 300, "%s/%s", starg.localpath, vfilelist[ii].filename);
+    logfile.Write("get %s ... ", strremotefilename);
+    if (ftp.get(strremotefilename, strlocalfilename) == false)
     {
       logfile.WriteEx("failed.\n");
       continue;
     }
     logfile.WriteEx("ok.\n");
+
+    // 删除ftp服务器里刚下载的文件
+    if (starg.ptype == 2)
+    {
+      if (ftp.ftpdelete(strremotefilename) == false)
+      {
+        logfile.Write("ftp.ftpdelete(%s) failed.\n", strremotefilename);
+        return false;
+      }
+    }
+
+    // 备份ftp服务器里刚下载的文件
+    if (starg.ptype == 3)
+    {
+      char strremotebakfilename[301];
+      SNPRINTF(strremotebakfilename, sizeof(strremotebakfilename), 300, "%s/%s", starg.remotepathbak,
+               vfilelist[ii].filename);
+
+      if (ftp.ftprename(strremotefilename, strremotebakfilename) == false)
+      {
+        logfile.Write("ftp.ftprename(%s to %s) failed.\n", strremotebakfilename, strremotebakfilename);
+        return false;
+      }
+    }
   }
 
 }
@@ -143,10 +169,8 @@ void _help()
   printf("\n");
   printf("Using: ftpgetfiles logfile ftpxml\n");
 
-  printf("Example:/project/tools/bin/ftpgetfiles /logs/tools/ftpgetfiles.log \\\n"
-         "\"<host>192.168.0.83</host><user>abc</user><password>123</password><mode>1</mode>\\\n"
-         "<localpath>/idcdata/surfdata</localpath><remotepath>/tmp/idc/surfdata</remotepath><matchname>SURF_ZH*.csv</matchname>\\\n"
-         "<listfilename>/idcdata/ftplist/ftpgetfiles_surfdata.list</listfilename>\"\n\n");
+  printf(
+      "Example:/project/tools/bin/ftpgetfiles /logs/tools/ftpgetfiles.log \"<host>192.168.0.83</host><user>abc</user><password>123</password><mode>1</mode><localpath>/idcdata/surfdata</localpath><remotepath>/tmp/idc/surfdata</remotepath><matchname>SURF_ZH*.CSV,SURF_ZH*.XML</matchname><listfilename>/idcdata/ftplist/ftpgetfiles_surfdata.list</listfilename><ptype>1</ptype><remotepathbak>/tmp/idc/surfdatabak</remotepathbak>\"\n\n");
 
   printf("本程序用于将ftp服务器的文件下载到本地文件夹，共需要两个参数：\n");
   printf("logfile：日志文件的位置。\n");
@@ -154,10 +178,15 @@ void _help()
   printf("<host>val</host>：ftp服务的地址。\n");
   printf("<user>val</user>：连接ftp服务器的用户名。\n");
   printf("<password>val</password>：连接ftp服务器的用户名密码。\n");
-  printf("<localpath>val</localpath>：本地存放文件的目录。\n");
-  printf("<remotepath>val</remotepath>：远程ftp服务器文件的目录。\n");
+  printf("<localpath>val</localpath>：本地存放文件的目录。（目录需要存在）\n");
+  printf("<remotepath>val</remotepath>：远程ftp服务器文件的目录。（目录需要存在）\n");
   printf("<matchname>val</matchname>：匹配远程ftp服务器目录的文件格式。\n");
-  printf("<listfilename>val</listfilename>：下载前列出服务器文件名的文件。\n\n");
+  printf("<listfilename>val</listfilename>：下载前列出服务器文件夹所有的文件名的文件。\n");
+//  printf("<okfilename>val</okfilename>：存储下载好的文件列表的本地文件路径。\n");
+  printf("<ptype>val</ptype>：传输完成后服务器对文件的操作，1：什么也不做；2：删除；3-拷贝备份到remotepathbak目录。\n");
+  printf(
+      "<remotepathbak>val</remotepathbak>：这是一个可选参数，用于服务器传输完成文件的备份，只有ptype为3时才生效且必须配置。（目录需要存在）\n\n");
+
 }
 
 bool _xml2arg(const char *arg)
@@ -208,7 +237,26 @@ bool _xml2arg(const char *arg)
     logfile.Write("listfilename is null.\n");
     return false;
   }
-  GetXMLBuffer(arg, "okfilename", starg.okfilename, 300);
+//  GetXMLBuffer(arg, "okfilename", starg.okfilename, 300);
+//  if (strlen(starg.okfilename) == 0)
+//  {
+//    logfile.Write("okfilename is null.\n");
+//    return false;
+//  }
+  GetXMLBuffer(arg, "ptype", &starg.ptype);
+  if (starg.ptype != 1 && starg.ptype != 2 && starg.ptype != 3)
+  {
+    logfile.Write("ptype error.\n");
+    return false;
+  }
+
+  GetXMLBuffer(arg, "remotepathbak", starg.remotepathbak, 300);
+  if (starg.ptype == 3 && strlen(starg.remotepathbak) == 0)
+  {
+    logfile.Write("remotepathbak is null.\n");
+    return false;
+  }
+
 
   return true;
 }
