@@ -8,4 +8,5 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/)
 set(CMAKE_CXX_FLAGS "-pthread")
 
 add_executable(book01 book01.cpp)
+add_executable(book02 book02.cpp)
 
