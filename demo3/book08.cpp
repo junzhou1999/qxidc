@@ -8,7 +8,19 @@
 #include <unistd.h>
 #include <string.h>
 
-void *thmain1(void *arg);  // 子线程主函数
+class Connection
+{
+public:
+  Connection()
+  { printf("数据库连接对象的初始化。\n"); };
+
+  ~Connection()
+  { printf("数据库连接对象的析构。\n"); };
+};
+
+void *thmain1(void *arg);            // 子线程主函数
+void thcleanup1(void *arg);         // 线程清理函数，固定格式
+void thcleanup2(void *arg);          // 线程清理函数，固定格式
 
 // 主线程
 int main(int argc, char *argv[])
@@ -16,27 +28,14 @@ int main(int argc, char *argv[])
 
   pthread_t thmid1 = 0;
 
-//  pthread_attr_t pattr;
-//  pthread_attr_init(&pattr);
-//  pthread_attr_setdetachstate(&pattr, PTHREAD_CREATE_DETACHED);
-
   // 线程id 线程属性 线程主函数 主函数参数
   if (pthread_create(&thmid1, NULL, thmain1, NULL) != 0)
   {
     printf("pthread_create(%lu) failed.\n", thmid1);
     exit(-1);
   }
-//  pthread_detach(thmid1); //线程分离方式1
-  sleep(2);  // 即使子进程先退出，但没有分离的情况下，子进程资源还是等待主线程回收
-
-
-  printf("pthread_join ...\n");
-
-  void *retcode = NULL;
-  pthread_join(thmid1, &retcode);           // 分离了的线程由系统管理，主线程join连接不到了，就不会阻塞再这里
-  printf("retcode=%ld\n", (long) retcode);
-  printf("pthread_join ok.\n");
-
+  // 主线程干点别的
+  sleep(10);
 
   return 0;
 }
@@ -48,13 +47,34 @@ int main(int argc, char *argv[])
  */
 void *thmain1(void *arg)
 {
-  // 用这样分离线程方便
+  // 分离线程
   pthread_detach(pthread_self());
 
-  return (void *) 1151;  // int -> void*
-  for (int ii = 0; ii < 5; ii++)
+  for (int ii = 0; ii < 2; ii++)
   {
     printf("这是线程一：%d\n", ii);
     sleep(1);
   }
+
+  Connection *conn = new Connection();
+
+  // 线程分离后需要自主回收资源
+  pthread_cleanup_push(thcleanup1, conn);
+    pthread_cleanup_push(thcleanup2, NULL);
+    pthread_cleanup_pop(1);
+  pthread_cleanup_pop(1);
+  return (void *) 1151;  // int -> void*
 }
+
+void thcleanup1(void *arg)
+{
+  if (arg != NULL)
+    delete (Connection *) arg;
+}
+
+void thcleanup2(void *arg)
+{
+  printf("清理文件，网络socket... ");
+  printf("ok.\n");
+}
+
