@@ -10,4 +10,7 @@ set(CMAKE_CXX_FLAGS "-pthread")
 add_executable(book01 book01.cpp)
 add_executable(book02 book02.cpp)
 add_executable(book03 book03.cpp)
+add_executable(book04 book04.cpp)
+add_executable(book05 book05.cpp)
+add_executable(book06 book06.cpp)
 
