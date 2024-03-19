@@ -14,4 +14,5 @@ add_executable(book04 book04.cpp)
 add_executable(book05 book05.cpp)
 add_executable(book06 book06.cpp)
 add_executable(book07 book07.cpp)
+add_executable(book08 book08.cpp)
 
