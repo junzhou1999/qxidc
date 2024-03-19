@@ -163,3 +163,7 @@
 
 * 线程如果调用了exit()，出现core dump现象，或者给进程发信号
 * 整个进程都会退出
+
+## 线程退出
+
+* pthread_exit(); pthread_calcel()，线程return
