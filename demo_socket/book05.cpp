@@ -1,5 +1,5 @@
 /**
- * book03.cpp：本程序用于socket服务端的实现，封装好服务端内部细节
+ * book03.cpp：本程序用于socket服务端的实现
 */
 #include <iostream>
 #include <stdio.h>

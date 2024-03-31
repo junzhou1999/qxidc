@@ -1,5 +1,5 @@
 /**
- * book04.cpp：本程序用于socket客户端的实现，封装好客户端内部细节
+ * book04.cpp：本程序用于socket客户端的实现
 */
 #include <stdio.h>
 #include <iostream>
