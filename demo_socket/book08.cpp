@@ -1,5 +1,5 @@
 /**
- * book06.cpp：本程序用于socket客户端的实现，测试服务端的多进程支持
+ * book04.cpp：本程序用于socket客户端的实现，测试服务端的多进程支持
 */
 #include <stdio.h>
 #include <iostream>

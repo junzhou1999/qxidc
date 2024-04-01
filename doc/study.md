@@ -193,3 +193,8 @@
   * resize()：动态改变容器大小
   * [index]和at(index)，返回index的char元素，[]运算没有范围检查
 
+## 构建多进程网络服务端
+* 子进程fork后一定要在业务完成的位置退出程序
+* ls /proc/{pid}/fd 查看进程打开的socket，要处理好父进程和子进程多余的socket
+
+

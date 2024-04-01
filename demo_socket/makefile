@@ -1,4 +1,4 @@
-all:book01 book02 book03 book04
+all:book01 book02 book03 book04 book05 book06
 
 book01:book01.cpp
 	g++ -g -o book01 book01.cpp
@@ -12,3 +12,9 @@ book03:book03.cpp
 book04:book04.cpp
 	g++ -g -o book04 book04.cpp
 
+book05:book05.cpp
+	g++ -g -o book05 book05.cpp
+
+
+book06:book06.cpp
+	g++ -g -o book06 book06.cpp
