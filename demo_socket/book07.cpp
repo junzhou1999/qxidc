@@ -61,6 +61,9 @@ bool CTcpServer::initServer(const unsigned short in_port)
   serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
   // serveraddr.sin_addr.s_addr = inet_addr("118.89.50.198"); // 指定ip地址。
   serveraddr.sin_port = htons(m_port);
+  // 支持bind已有连接的端口，避免服务端主动端口后在TCP挥手的时候需要等待2MSL时间内重新打开服务
+  int opt = 1; unsigned int len = sizeof(opt);
+  setsockopt(m_listenfd,SOL_SOCKET,SO_REUSEADDR,&opt,len);    
   if (bind(m_listenfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) !=0 )
   {
    perror("bind");
