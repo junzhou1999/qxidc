@@ -1,5 +1,5 @@
 /**
- * book04.cpp：本程序用于socket客户端的实现，测试服务端的多进程支持
+ * book08.cpp：本程序用于socket客户端的实现，测试服务端的多线程支持
 */
 #include <stdio.h>
 #include <iostream>
@@ -81,10 +81,11 @@ bool CTcpClient::send(const string& buffer)
 {
   if (m_sockfd == -1)  return false;
   int writen;
-  if ((writen = ::send(m_sockfd, buffer.data(), buffer.size(), 0)) <= 0)
+  // 只发送有效字符串，不发送整个容器
+  if ((writen = ::send(m_sockfd, buffer.data(), strlen(buffer.data()), 0)) <= 0)
   {
     perror("send");
-    _close();
+    // _close();
     return false;
   }
 
@@ -107,8 +108,8 @@ int main(int argc, char* argv[])
 {
   if (argc!=3)
   {
-    printf("Using: book06 ip port\n");
-    printf("Example: ./book06 192.168.0.74 5005\n\n");
+    printf("Using: book08 ip port\n");
+    printf("Example: ./book08 192.168.0.74 5005\n\n");
     return -1;
   }
 
@@ -124,8 +125,7 @@ int main(int argc, char* argv[])
   for (int ii=0; ii<100; ii++)
   {
     buffer.resize(1024);
-
-    snprintf(&buffer.at(0), 1023, "这是第%d个超女，编号：%010d。", ii, ii+1);
+    sprintf(&buffer[0], "这是第%d个超女，编号：%010d。", ii, ii+1);
 
     if ( (tcpClient.send(buffer)) == false)
     {
@@ -146,5 +146,3 @@ sleep(1);
   // 析构资源
   return 0;
 }
-
-

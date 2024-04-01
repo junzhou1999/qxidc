@@ -1,4 +1,7 @@
-all:book01 book02 book03 book04 book05 book06
+all:book01 book02 book03 book04 book05 book06 book07 book08
+
+PUBINCL = -I/project/public
+PUBCPP = /project/public/_public.cpp
 
 book01:book01.cpp
 	g++ -g -o book01 book01.cpp
@@ -15,6 +18,12 @@ book04:book04.cpp
 book05:book05.cpp
 	g++ -g -o book05 book05.cpp
 
-
 book06:book06.cpp
 	g++ -g -o book06 book06.cpp
+
+book07:book07.cpp
+	g++ -g -o book07 book07.cpp -lpthread 
+
+book08:book08.cpp
+	g++ -g -o book08 book08.cpp
+

@@ -1,5 +1,5 @@
 /**
- * book05.cpp：本程序用于socket服务端的实，支持多进程连接
+ * book07.cpp：本程序用于socket服务端的实现，支持多线程连接
 */
 #include <iostream>
 #include <stdio.h>
@@ -13,13 +13,14 @@
 #include <string>
 using namespace std;
 #include <signal.h>
+#include <pthread.h>
 
 class CTcpServer{
 private:
-  int m_listenfd;
-  int m_clientfd;
-  unsigned short m_port;
-  string m_clientip;
+  int m_listenfd;  // 进程（线程）的监听socket
+  int m_clientfd;  // 最新连接上来的客户端socket
+  unsigned short m_port;  // 服务端端口
+  string m_clientip;      // 连接上来客户端的IP地址，表示：点分十进制
 
 public:
   CTcpServer():m_listenfd(-1),m_clientfd(-1){}
@@ -30,8 +31,10 @@ public:
 
   const string& getClientIP() const;
 
-  bool send(const string& buffer);
-  bool recv(string& buffer, int maxlen);
+  const int& getClientfd() const;
+
+  bool send(const string& buffer){}
+  bool recv(string& buffer, int maxlen){}
 
   bool _closeListenfd();
   bool _closeClientfd();
@@ -91,14 +94,23 @@ const string& CTcpServer::getClientIP() const
   return this->m_clientip; 
 }
 
-bool CTcpServer::recv(string& buffer, int maxlen)
+const int& CTcpServer::getClientfd() const
+{
+  return this->m_clientfd; 
+}
+
+/***
+ * connfd：要通信的socket端口
+ * buffer：string类buffer缓存
+ * maxlen：自定义设置buffer的大小，应该考虑报文长度
+*/
+bool Recv(const int connfd, string& buffer, int maxlen)
 {
   buffer.clear();            // 初始化容器
   buffer.resize(maxlen);     // 设置容器大小
 
   int readn;
-  // :: 使用外部同名函数
-  if ((readn = ::recv(m_clientfd, &buffer[0], buffer.size(), 0)) <= 0)
+  if ((readn = recv(connfd, &buffer[0], buffer.size(), 0)) <= 0)
   {
     buffer.clear();
     return false;
@@ -111,13 +123,13 @@ bool CTcpServer::recv(string& buffer, int maxlen)
 /**
  * 常引用的string容器可以接收string对象和c语言字符串
 */
-bool CTcpServer::send(const string& buffer)
+bool Send(const int connfd, const string& buffer)
 {
-  if (m_clientfd == -1)  return false;
+  if (connfd == -1)  return false;
   int writen;
-  if ((writen = ::send(m_clientfd, buffer.data(), buffer.size(), 0)) <= 0)   // 用buffer.size而不是buffer.length
+  if ((writen = send(connfd, buffer.data(), buffer.size(), 0)) <= 0)   // 用buffer.size而不是buffer.length
   {
-    _closeClientfd();
+    // close(connfd);
     return false;
   }
 
@@ -138,6 +150,9 @@ bool CTcpServer::_closeClientfd()
   return true;
 }
 
+// 线程主函数，负责服务端的通信
+void* thmain(void* arg);
+
 // 全局变量方便exit析构
 CTcpServer tcpServer;
 
@@ -148,8 +163,8 @@ int main(int argc, char* argv[])
 {
   if (argc!=2)
   {
-    printf("Using: book05 port\n");
-    printf("Example: ./book05 5005\n\n");
+    printf("Using: book07 port\n");
+    printf("Example: ./book07 5005\n\n");
     return -1;
   }
 
@@ -170,39 +185,38 @@ int main(int argc, char* argv[])
     // 阻塞等待
     tcpServer.accpet();  cout << "客户端（" << tcpServer.getClientIP() << "）已连接。\n"; 
     // 先阻塞，再分叉
-    int pid = fork();
-    if (pid == -1)  {perror("fork");  return -1;}
-
-    if (pid > 0)  
-    {  // 父进程
-      tcpServer._closeClientfd();
-      continue;
-    }
-
-    // 子进程处理
-    tcpServer._closeListenfd();
-    // 子进程不接受CTRL+C
-    signal(SIGINT, SIG_IGN);  signal(SIGTERM, ChldExit);  
-
-    // 双方开始通信
-    string buffer;
-    while(true)  // 服务端接收来自客户端的交流请求
+    pthread_t thmid;
+    if (pthread_create(&thmid, NULL, thmain, (void*)(long)tcpServer.getClientfd()) != 0)
     {
-      if (tcpServer.recv(buffer, 1024) == false)  break;  // 阻塞
-      cout << "接收：" << buffer << endl;
-
-      buffer = "ok";
-      if (tcpServer.send(buffer) == false)
-      {
-        perror("tcpServer.send()");
-        break;
-      }
-      cout << "发送：" << buffer << endl;
+      perror("pthread_create");
+      return -1;
     }
-    // 子进程退出，且一定要在循环后退出
-    return 0;
   }  
 
+  //return 0;
+}
+
+// 线程主函数，负责服务端的通信
+void* thmain(void* arg)
+{
+  int connfd = (int)(long)arg;  // 需要保留新连上了客户端socket
+  string buffer;
+  while(true)   
+  {
+    // 不能再用类里面的传输了，因为客户端连接传输socket在线程里只有一份
+    if (Recv(connfd, buffer, 1024) == false)  break;  // 阻塞
+    cout << "接收：" << buffer << "readn=" << buffer.size() << "。\n";
+
+    buffer = "ok";
+    if (Send(connfd, buffer) == false)
+    {
+      perror("Send()");
+      break;
+    }
+    cout << "发送：" << buffer << endl;
+  }
+
+  return 0;
 }
 
 // 父进程退出处理函数
