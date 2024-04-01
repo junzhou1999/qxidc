@@ -157,8 +157,8 @@ bool CTcpServer::_closeClientfd()
 // 线程主函数，负责服务端的通信
 void* thmain(void* arg);
 
-// 保存线程id的全局链表，用于线程退出时处理
-list<pthread_t> lspthid;
+pthread_spinlock_t lsSpinLock;  // 给共享的链表容器加的自旋锁
+list<pthread_t> lspthid;        // 保存线程id的全局链表，用于线程退出时处理
 
 // 线程退出处理
 void thcleanup(void* arg);
@@ -189,6 +189,9 @@ int main(int argc, char* argv[])
     return false;
   }
 
+  // 自旋锁的初始化
+  pthread_spin_init(&lsSpinLock, 0);
+
   while(true)
   {
     // 阻塞等待
@@ -200,8 +203,13 @@ int main(int argc, char* argv[])
       perror("pthread_create");
       return -1;
     }
+
+    pthread_spin_lock(&lsSpinLock);    // 加锁
+
     // 更新维护队列
     lspthid.push_back(thmid);
+
+    pthread_spin_unlock(&lsSpinLock);  // 释放锁
   }  
 
   //return 0;
@@ -234,6 +242,7 @@ void* thmain(void* arg)
     cout << "发送：" << buffer << endl;
   }
 
+  pthread_spin_lock(&lsSpinLock);
   // 线程结束的处理
   // 维护链表
   for (list<pthread_t>::iterator it=lspthid.begin(); it!=lspthid.end();it++) 
@@ -244,7 +253,10 @@ void* thmain(void* arg)
       break;
     }
   }
-  pthread_cleanup_pop(1); // 线程清理函数出栈
+
+  pthread_spin_unlock(&lsSpinLock);
+  
+  pthread_cleanup_pop(1); // 线程清理函数出栈，close(connfd)
 
   return 0;
 }
@@ -268,12 +280,17 @@ void Exit(int sig)
   // 父进程资源释放
   tcpServer._closeListenfd();
   
+  cout << "lspthid.size():" << lspthid.size() << endl;
+  pthread_spin_lock(&lsSpinLock);
   // 取消全部的线程
   for (list<pthread_t>::iterator it=lspthid.begin(); it!=lspthid.end(); it++)
   {
     pthread_cancel(*it);
   }
+  pthread_spin_unlock(&lsSpinLock);
   sleep(1);  // 执行线程清理需要时间
+
+  pthread_spin_destroy(&lsSpinLock);
 
   exit(0);  // exit针对全局对象的析构，调用对象的析构函数
 }

@@ -122,7 +122,7 @@ int main(int argc, char* argv[])
 
   // 通信
   string buffer;
-  for (int ii=0; ii<100; ii++)
+  for (int ii=0; ii<10; ii++)
   {
     buffer.resize(1024);
     sprintf(&buffer[0], "这是第%d个超女，编号：%010d。", ii, ii+1);
