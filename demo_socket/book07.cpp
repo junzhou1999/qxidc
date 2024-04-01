@@ -14,6 +14,7 @@
 using namespace std;
 #include <signal.h>
 #include <pthread.h>
+#include <list>
 
 class CTcpServer{
 private:
@@ -153,11 +154,16 @@ bool CTcpServer::_closeClientfd()
 // 线程主函数，负责服务端的通信
 void* thmain(void* arg);
 
+// 保存线程id的全局链表，用于线程退出时处理
+list<pthread_t> lspthid;
+
+// 线程退出处理
+void thcleanup(void* arg);
+
 // 全局变量方便exit析构
 CTcpServer tcpServer;
 
-void FathExit(int sig);  // 父进程退出处理
-void ChldExit(int sig);  // 子进程退出处理
+void Exit(int sig);  // 进程信号退出处理
 
 int main(int argc, char* argv[])
 {
@@ -172,7 +178,7 @@ int main(int argc, char* argv[])
   for (int ii=0;ii<64;ii++)  signal(ii, SIG_IGN);
 
   // 父进程的信号处理函数，支持CTRL+C，终止信号方式的退出
-  signal(SIGINT, FathExit);  signal(SIGTERM, FathExit);
+  signal(SIGINT, Exit);  signal(SIGTERM, Exit);
 
   if (tcpServer.initServer(atoi(argv[1])) == false)
   {
@@ -191,6 +197,8 @@ int main(int argc, char* argv[])
       perror("pthread_create");
       return -1;
     }
+    // 更新维护队列
+    lspthid.push_back(thmid);
   }  
 
   //return 0;
@@ -199,7 +207,14 @@ int main(int argc, char* argv[])
 // 线程主函数，负责服务端的通信
 void* thmain(void* arg)
 {
-  int connfd = (int)(long)arg;  // 需要保留新连上了客户端socket
+  pthread_cleanup_push(thcleanup, arg);  // 线程资源清理函数入栈
+
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);  // 线程的取消方式为立即取消
+
+  pthread_detach(pthread_self());        // 线程分离
+
+  int connfd = (int)(long)arg;           // 需要保留新连上了客户端socket
+
   string buffer;
   while(true)   
   {
@@ -216,35 +231,46 @@ void* thmain(void* arg)
     cout << "发送：" << buffer << endl;
   }
 
+  // 线程结束的处理
+  // 维护链表
+  for (list<pthread_t>::iterator it=lspthid.begin(); it!=lspthid.end();it++) 
+  {
+    if (pthread_equal(*it, pthread_self()) !=0 )  
+    {
+      lspthid.erase(it);  // 如果删除完之后还要迭代erase(it++)
+      break;
+    }
+  }
+  pthread_cleanup_pop(1); // 线程清理函数出栈
+
   return 0;
 }
 
-// 父进程退出处理函数
-void FathExit(int sig)
+// 线程清理是清理资源
+// 不同于线程结束的处理
+void thcleanup(void* arg)
 {
-  // 防止退出处理过程被其他信号干扰
-  signal(SIGINT, SIG_IGN);  signal(SIGTERM, SIG_IGN);
-
-  cout << "父进程（" << getpid() << "）退出。";
-  
-  // 通知所有子进程退出
-  kill(0, SIGTERM);
-
-  // 父进程资源释放
-  tcpServer._closeListenfd();
-
-  exit(0);  // exit针对全局对象的析构，调用对象的析构函数
+  close((long)arg);
+  cout << "线程（" << pthread_self() << ")已被清理。\n";
 }
 
-// 子进程退出处理函数
-void ChldExit(int sig)
+// 进程退出处理函数
+void Exit(int sig)
 {
   // 防止退出处理过程被其他信号干扰
   signal(SIGINT, SIG_IGN);  signal(SIGTERM, SIG_IGN);
 
-  cout << "子进程（" << getpid() << "）退出。";
+  cout << "进程退出，sig=" << sig << ".\n";
+  
+  // 父进程资源释放
+  tcpServer._closeListenfd();
+  
+  // 取消全部的线程
+  for (list<pthread_t>::iterator it=lspthid.begin(); it!=lspthid.end(); it++)
+  {
+    pthread_cancel(*it);
+  }
+  sleep(1);  // 执行线程清理需要时间
 
-  tcpServer._closeClientfd();
-
-  exit(0);  
+  exit(0);  // exit针对全局对象的析构，调用对象的析构函数
 }
