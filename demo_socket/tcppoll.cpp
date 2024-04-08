@@ -32,9 +32,7 @@ int main(int argc, char* argv[])
   if (argc!=2)
   {
     cout << "Using: tcpselect port\n";
-    cout << "Example: ./tcpselect 5005\n";
-    cout << "./tcpclient 127.0.0.1 5005\n\n";
-    
+    cout << "Example: ./tcpselect 5005\n\n";
     return -1;
   }
 
@@ -61,6 +59,7 @@ int main(int argc, char* argv[])
   cout << "服务端（listen_socket:" << listenfd << "）就绪。\n";
 
   // 外层循环，一直select，监视socket
+int bb=0;
   while(true)
   {
     // select()：等待事件发生
