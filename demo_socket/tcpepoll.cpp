@@ -1,5 +1,5 @@
 /**
- * tcppoll.cpp：本程序用于socket服务端的实现，支持poll特性的IO复用技术
+ * tcpepoll.cpp：本程序用于socket服务端的实现，支持epoll特性的IO复用技术
 */
 #include <iostream>
 #include <stdio.h>
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <string>
 using namespace std;
-#include <poll.h>
+#include <sys/epoll.h>
 
 // 初始化listen socket，传参
 bool initServer(int& listenfd, const unsigned short in_port);
@@ -24,9 +24,9 @@ int main(int argc, char* argv[])
 {
   if (argc!=2)
   {
-    cout << "Using: tcppoll port\n";
-    cout << "Example: ./tcppoll 5005\n";
-    cout << "./tcpclient 127.0.0.1 5005\n\n";
+    cout << "Using: tcpepoll port\n";
+    cout << "Example: ./tcpepoll 5005\n";
+    cout << "         ./tcpclient 127.0.0.1 5005\n\n";
 
     return -1;
   }
@@ -40,63 +40,57 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  struct pollfd fds[1024];    // 声明poll结构体
-  // 0  1  2  3  .. 1023
-  // -1 -1 -1 -1 .. -1
+  // 创建epoll句柄
+  int epollfd = epoll_create(1); 
+
+  // 用于处理单个事件（包含socket信息）的结构体
+  struct epoll_event ev;                // 这里是listenfd监听事件的结构体
+  ev.data.fd = listenfd;                // 指定事件的自定义数据，会随epoll_wait()一并返回
+  ev.events = EPOLLIN;                  // 打算让epoll监听socket的读事件
+  
+  epoll_ctl(epollfd, EPOLL_CTL_ADD, listenfd, &ev);   // 把需要监听的socket加入到epollfd句柄中
 
   // 初始化
-  for (int ii=0; ii<1024; ii++)  fds[ii].fd = -1;
-
-  // 打算让poll监听的事件
-  fds[listenfd].fd = listenfd;
-  fds[listenfd].events = POLLIN;           // POLLIN表示就监听读事件，POLLOUT表示写事件
-  // fds[listenfd].events = POLLIN|POLLOUT;   // 都监听
-
-  int maxfd = listenfd;        // 初始化取最大的临时socket
-
   cout << "服务端（listen_socket:" << listenfd << "）就绪。\n";
 
-  // 外层循环，一直select，监视socket
+  const int MAX_EVENTS = 10;
+  struct epoll_event evs[MAX_EVENTS];   // 声明epoll返回的事件结构体
+
+  // 外层循环，监视socket
   while(true)
   {
     /* 
-     * 阻塞监听事件，有事件响应poll()函数就返回
+     * 阻塞监听事件，有事件响应epoll()函数就返回
      * ifds：事件变化的个数或者监视结果
-     * 1.poll结构体
-     * 2.最大的fd
-     * 3.超时时间（毫秒ms）：100秒
+     * 1.epoll句柄
+     * 2.监听事件的结构体数组地址
+     * 3.监听事件数目
+     * 4.超时时间（毫秒ms）：-1，永远等待
     */
-    int infds = poll(fds, maxfd+1, 100000);
+    int infds = epoll_wait(epollfd, evs, MAX_EVENTS, -1);
+
     if (infds < 0)    // 函数调用失败
     {
-      perror("poll() failed");
+      perror("epoll() failed");
       break;
     }
 
     if (infds == 0)   // 超时
     {
-      perror("poll() timeout");
+      perror("epoll() timeout");
       continue;
     }
 
     // 读事件变化
-    // 遍历所有在poll监视中的socket？注意：是从0遍历到最大的那个socket，所以要用<=
-    for (int eventfd=0; eventfd<=maxfd; eventfd++)
+    // 遍历所有在epoll监视中的socket
+    for (int ii=0; ii<infds; ii++)
     {
-      // 这两个continue必须存在，需要及时处理连接和通信
-
-      // 只需要定位有事件发生的socket
-      if ( fds[eventfd].fd < 0)  continue;  
-
-      // 只需要定位读事件
-      if ((fds[eventfd].revents&POLLIN) == 0)  continue;
-
       // 监听事件
-      if (eventfd == listenfd)
+      if (evs[ii].data.fd == listenfd)
       {
         // 有客户端连上来
         int clientfd;  struct sockaddr_in clientaddr;
-        if (Accept(eventfd, clientfd, clientaddr) == false)
+        if (Accept(listenfd, clientfd, clientaddr) == false)
         {
           perror("Accpet()");
           continue;
@@ -104,33 +98,24 @@ int main(int argc, char* argv[])
         // cout << "客户端（" << inet_ntoa(clientaddr.sin_addr) <<  "）已连接。" << endl;  // 大端序的IP转成点分十进制的IP
         cout << "客户端（socket:" << clientfd <<  "）已连接。" << endl;
 
-        // socket加入的操作
-        fds[clientfd].fd = clientfd;
-        fds[clientfd].events = POLLIN;
-        if (clientfd > maxfd)  maxfd = clientfd;
+        // socket加入的操作，这里是clientfd加入监视
+        ev.data.fd = clientfd;
+        ev.events = EPOLLIN;
+        epoll_ctl(epollfd, EPOLL_CTL_ADD, clientfd, &ev);
       }
       else 
       // 通信事件，接收报文失败
       {
         string buffer;  buffer.clear();  buffer.resize(1024);
 
-        if (recv(eventfd, &buffer[0], buffer.size(), 0) <= 0)
+        if (recv(evs[ii].data.fd, &buffer[0], buffer.size(), 0) <= 0)
         {
           // 通信断开的一些操作
-          cout << "客户端（socket:" << eventfd << "）已断开。\n"; 
+          cout << "客户端（socket:" << evs[ii].data.fd << "）已断开。\n"; 
 
-          fds[eventfd].fd = -1;
-          close(eventfd);
-
-          for (int ii=maxfd; ii>0; ii--)   // 重新找最大的fd
-          {
-            // 找到一个最大的
-            if (fds[ii].fd != -1)  
-            {
-              maxfd = ii;
-              break;
-            }
-          }
+          close(evs[ii].data.fd);
+          // 从epoll中删除客户端的socket，如果socket被关闭了，会自动从epollfd句柄中删除，多以以下代码可不启用
+          // epoll_ctl(epollfd, EPOLL_CTL_DEL, evs[ii].data.fd, NULL);
         }
         else
         // 通信事件，接收报文成功
@@ -138,29 +123,18 @@ int main(int argc, char* argv[])
           cout << "接收：" << buffer << endl;
 
           buffer = "ok";
-          if (send(eventfd, buffer.data(), strlen(buffer.data()), 0) <= 0)
+          if (send(evs[ii].data.fd, buffer.data(), strlen(buffer.data()), 0) <= 0)
           {
-            cout << "客户端（socket:" << eventfd << "）已断开。\n"; 
+            cout << "客户端（socket:" << evs[ii].data.fd << "）已断开。\n"; 
 
-            fds[eventfd].fd = -1;
-            close(eventfd);
+            close(evs[ii].data.fd);
 
-            // 找到一个最大的
-            for (int ii=maxfd; ii>0; ii--)   // 重新找最大的fd
-            {
-              // 找到一个最大的
-              if (fds[ii].fd != -1)  
-              {
-                maxfd = ii;
-                break;
-              }
-            }
           }
           cout << "发送：" << buffer << endl; 
         }
       }   // 监听or通信
-    }     // 遍历poll结构体数组
-  }       // 循环poll
+    }     // 遍历epoll结构体数组
+  }       // 循环epoll
 
   return 0;
 }
