@@ -1,5 +1,5 @@
 all:book01 book02 book03 book04 book05 book06 book07 book08 \
-		tcpselect tcpclient tcppoll tcpepoll
+		tcpselect tcpclient tcppoll tcpepoll tcpclient1 tcpepoll1
 
 PUBINCL = -I/project/public
 PUBCPP = /project/public/_public.cpp
@@ -40,3 +40,8 @@ tcppoll:tcppoll.cpp
 tcpepoll:tcpepoll.cpp
 	g++ -g -o tcpepoll tcpepoll.cpp
 
+tcpepoll1:tcpepoll1.cpp
+	g++ -g -o tcpepoll1 tcpepoll1.cpp
+
+tcpclient1:tcpclient1.cpp
+	g++ -g -o tcpclient1 tcpclient1.cpp

@@ -1,5 +1,5 @@
 /**
- * tcpclient.cpp：本程序用于socket客户端的实现，测试服务端的复用特性
+ * tcpclient1.cpp：本程序用于socket客户端的实现，测试服务端的复用特性，属于非阻塞连接
 */
 #include <stdio.h>
 #include <iostream>
@@ -11,12 +11,16 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string>
+#include <fcntl.h>
+#include <errno.h>
+#include <poll.h>
 using namespace std;
 
 class CTcpClient
 {
 private:
   int m_sockfd;
+  bool setNoBlock();
   bool _close();
 public:
   CTcpClient():m_sockfd(-1){}
@@ -50,6 +54,8 @@ bool CTcpClient::connect(const char* in_ip, const unsigned short in_port)
     perror("socket");
     return false;
   }
+  // 在获取socket后设置标志
+  this->setNoBlock();
 
   // 配置服务器信息，连接
   struct sockaddr_in serveraddr;
@@ -69,11 +75,29 @@ bool CTcpClient::connect(const char* in_ip, const unsigned short in_port)
   // 主动连接
   if (::connect(m_sockfd, (struct sockaddr*)&serveraddr, (socklen_t)addrlen) != 0)
   {
-    perror("connect");
-    _close();
+    // 调用非阻塞的socket，无论是否连接成功，它都是失败的
+    if(errno != EINPROGRESS)    
+    {
+      perror("connect");
+      _close();
+      return false;
+    }
+    // 因为阻塞而产生的连接错误可以忽略 
+    // cout << "errno=" << errno << "，EINPROGRESS=" << EINPROGRESS << endl;
+  }
+
+  // 非阻塞的socket，如果连接是可写的，那么连接是成功的
+  struct pollfd fds;
+  fds.fd = m_sockfd;
+  fds.events = POLLOUT;
+  poll(&fds, 1, -1);
+  if (fds.revents != POLLOUT)
+  {
+    cout << "connect failed.\n";
     return false;
   }
 
+  cout << "connect ok.\n";
   return true;
 }
 
@@ -102,6 +126,24 @@ bool CTcpClient::recv(string& buffer, int maxlen)
   buffer.resize(readn);
   return true;
 
+}
+
+/**
+ * @brief 设置socket为非阻塞socket
+ * fcntl()函数当获取socket的标志位时，返回值是其标志位 
+ * @return true 
+ * @return false 
+ */
+bool CTcpClient::setNoBlock()
+{
+  if (m_sockfd == -1)  return false;
+
+  int flags;
+  if ( (flags=fcntl(m_sockfd, F_GETFL, 0)) == -1)   flags = 0;
+
+  fcntl(m_sockfd, F_SETFL, flags|O_NONBLOCK);
+  
+  return true;
 }
 
 int main(int argc, char* argv[])
