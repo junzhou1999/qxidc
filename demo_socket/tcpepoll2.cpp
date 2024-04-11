@@ -1,5 +1,5 @@
 /**
- * tcpepoll.cpp：本程序用于socket服务端的实现，支持epoll特性的IO复用技术
+ * tcpepoll2.cpp：本程序用于socket服务端的实现，支持epoll特性的IO复用技术，测试epoll的边缘触发
 */
 #include <iostream>
 #include <stdio.h>
@@ -13,6 +13,8 @@
 #include <string>
 using namespace std;
 #include <sys/epoll.h>
+#include <fcntl.h>
+#include <errno.h>
 
 // 初始化listen socket，传参
 bool initServer(int& listenfd, const unsigned short in_port);
@@ -20,13 +22,16 @@ bool initServer(int& listenfd, const unsigned short in_port);
 // 监听端口接受客户端的连接
 bool Accept(const int& listenfd, int& clientfd, struct sockaddr_in& clientaddr);
 
+// 设置socket的标志属于非阻塞
+int setNoBlock(int fd);
+
 int main(int argc, char* argv[])
 {
   if (argc!=2)
   {
     cout << "Using: tcpepoll port\n";
-    cout << "Example: ./tcpepoll 5005\n";
-    cout << "         ./tcpclient 127.0.0.1 5005\n\n";
+    cout << "Example: ./tcpepoll2 5005\n";
+    cout << "         ./tcpclient2 127.0.0.1 5005\n\n";
 
     return -1;
   }
@@ -40,13 +45,17 @@ int main(int argc, char* argv[])
     return -1;
   }
 
+  // 设置监听socket非阻塞，accept会返回-1
+  setNoBlock(listenfd);
+
   // 创建epoll句柄
   int epollfd = epoll_create(1); 
 
   // 用于处理单个事件（包含socket信息）的结构体
   struct epoll_event ev;                // 这里是listenfd监听事件的结构体
   ev.data.fd = listenfd;                // 指定事件的自定义数据，会随epoll_wait()一并返回
-  ev.events = EPOLLIN;                  // 打算让epoll监听socket的读事件
+  // ev.events = EPOLLIN;                  // 打算让epoll监听socket的读事件
+  ev.events = EPOLLIN|EPOLLET;          // 监听，启用边缘触发的方式
   
   epoll_ctl(epollfd, EPOLL_CTL_ADD, listenfd, &ev);   // 把需要监听的socket加入到epollfd句柄中
 
@@ -55,7 +64,7 @@ int main(int argc, char* argv[])
 
   const int MAX_EVENTS = 10;
   struct epoll_event evs[MAX_EVENTS];   // 声明epoll返回的事件数据结构体
-
+static int count;
   // 事件循环
   while(true)
   {
@@ -87,35 +96,39 @@ int main(int argc, char* argv[])
       // 属于监听事件的
       if (evs[ii].data.fd == listenfd)
       {
-        // 有客户端连上来
-        int clientfd;  struct sockaddr_in clientaddr;
-        if (Accept(listenfd, clientfd, clientaddr) == false)
+        while (true)
         {
-          perror("Accpet()");
-          continue;
-        }
-        // cout << "客户端（" << inet_ntoa(clientaddr.sin_addr) <<  "）已连接。" << endl;  // 大端序的IP转成点分十进制的IP
-        cout << "客户端（socket:" << clientfd <<  "）已连接。" << endl;
+          // 有客户端连上来
+          int clientfd;  struct sockaddr_in clientaddr;
+          if (Accept(listenfd, clientfd, clientaddr) == true)   break;
 
-        // socket加入的操作，这里是clientfd加入监视
-        ev.data.fd = clientfd;
-        ev.events = EPOLLIN;
-        epoll_ctl(epollfd, EPOLL_CTL_ADD, clientfd, &ev);
+          //测试并发的多个连接数
+          // cout << "第" << ++count << "个客户端连上了。\n";
+          cout << "客户端（socket:" << clientfd <<  "）已连接。" << endl;
+
+          // socket加入的操作，这里是clientfd加入监视
+          setNoBlock(clientfd);
+          ev.data.fd = clientfd;
+          ev.events = EPOLLIN|EPOLLET;
+          epoll_ctl(epollfd, EPOLL_CTL_ADD, clientfd, &ev);
+        }
       }
       else 
       // 属于通信事件
       {
         string buffer;  buffer.clear();  buffer.resize(1024);
-
-        // 接收报文失败情况
-        if (recv(evs[ii].data.fd, &buffer[0], buffer.size(), 0) <= 0)
+        while (true)
         {
-          // 通信断开的一些操作
-          cout << "客户端（socket:" << evs[ii].data.fd << "）已断开。\n"; 
+          // 接收报文失败情况
+          if (recv(evs[ii].data.fd, &buffer[0], 5, 0) <= 0)
+          {
+            // 通信断开的一些操作
+            cout << "客户端（socket:" << evs[ii].data.fd << "）已断开。\n"; 
 
-          close(evs[ii].data.fd);
-          // 从epoll中删除客户端的socket，如果socket被关闭了，会自动从epollfd句柄中删除，多以以下代码可不启用
-          // epoll_ctl(epollfd, EPOLL_CTL_DEL, evs[ii].data.fd, NULL);
+            close(evs[ii].data.fd);
+            // 从epoll中删除客户端的socket，如果socket被关闭了，会自动从epollfd句柄中删除，多以以下代码可不启用
+            // epoll_ctl(epollfd, EPOLL_CTL_DEL, evs[ii].data.fd, NULL);
+          }
         }
         else
         // 通信事件，接收报文成功
@@ -176,14 +189,37 @@ bool initServer(int& listenfd, const unsigned short in_port)
 }
 
 /**
- * 监听端口接受客户端的连接
+ * 阻塞的监听端口accept()只能是EAGAIN才能跳出循环，代表队列中没有socket了
 */
+
+
+/**
+ * @brief 
+ * 
+ * @param listenfd 
+ * @param clientfd 
+ * @param clientaddr 
+ * @return true 退出循环
+ * @return false 继续循环，边缘触发还有监听的客户端没accept()处理
+ */
 bool Accept(const int& listenfd, int& clientfd, struct sockaddr_in& clientaddr)
 {
   int addrlen = sizeof(clientaddr);
-  // 在这里阻塞等待
-  clientfd = accept(listenfd, (struct sockaddr*)&clientaddr, (socklen_t*)&addrlen);
+  if ((clientfd = accept(listenfd, (struct sockaddr*)&clientaddr, (socklen_t*)&addrlen)) < 0 && errno == EAGAIN)
+  {
+    // cout << "clientfd:" << clientfd << ",errno:" << errno << ",EAGAIN:" << EAGAIN <<endl;
+    return true;
+  }
 
-  return true;
+  return false;
 }
 
+// 设置socket的标志属于非阻塞
+int setNoBlock(int fd)
+{
+  int flags;
+
+  if ( (flags=fcntl(fd, F_GETFL, 0)) == -1)  flags = 0;
+
+  return fcntl(fd, F_SETFL, flags|O_NONBLOCK);
+}

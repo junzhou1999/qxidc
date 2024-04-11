@@ -256,3 +256,5 @@
  * 设置非阻塞的socket在connect()都会报EINPROGRESS错误，代表无法立即处理，需要忽略这个错误
  * 判断客户端连接成功与否可以用poll来判断socket的可写的超时状态
  * 像服务端设置非阻塞的状态，当listenfd设置后，如果队列没有可连接socket时，accpet会报EAGAIN，send(),recv()同样
+
+ ## 暂存：tcpepoll的非阻塞边缘触发
