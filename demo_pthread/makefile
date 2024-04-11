@@ -1,0 +1,29 @@
+all:book01 book02 book03 book04 book05 book06 book07 book08
+
+book01:book01.cpp
+	g++ -g -o book01 book01.cpp -pthread
+
+book02:book02.cpp
+	g++ -g -o book02 book02.cpp -pthread
+
+book03:book03.cpp
+	g++ -g -o book03 book03.cpp -pthread
+
+book04:book04.cpp
+	g++ -g -o book04 book04.cpp -pthread
+
+book05:book05.cpp
+	g++ -g -o book05 book05.cpp -pthread
+
+book06:book06.cpp
+	g++ -g -o book06 book06.cpp -pthread
+
+book07:book07.cpp
+	g++ -g -o book07 book07.cpp -pthread
+
+book08:book08.cpp
+	g++ -g -o book08 book08.cpp -pthread
+
+clean:
+	rm -f book01 book02 book03 book04 book05 book06 book07 book08
+	
