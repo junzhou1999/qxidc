@@ -251,10 +251,13 @@
 * 句柄（Handle）是一个用于标识和访问对象或项目的标识符，epoll句柄占用一个fd
 * 因为poll的访问既是下标又是socket，而epoll中只有发生事件的epoll结构体的fd，所以循环判断事件的类型只是结构体里边的fd数据
  
- ## 测试客户端的非阻塞
- * 非阻塞：个人理解，如果调用一些阻塞函数前accpet(),connect(),send(),recv()前没有处理对象，那么这些阻塞函数会返回错误
- * 设置非阻塞的socket在connect()都会报EINPROGRESS错误，代表无法立即处理，需要忽略这个错误
- * 判断客户端连接成功与否可以用poll来判断socket的可写的超时状态
- * 像服务端设置非阻塞的状态，当listenfd设置后，如果队列没有可连接socket时，accpet会报EAGAIN，send(),recv()同样
+## 测试客户端的非阻塞
+* 非阻塞：个人理解，如果调用一些阻塞函数前accpet(),connect(),send(),recv()前没有处理对象，那么这些阻塞函数会返回错误
+* 设置非阻塞的socket在connect()都会报EINPROGRESS错误，代表无法立即处理，需要忽略这个错误
+* 判断客户端连接成功与否可以用poll来判断socket的可写的超时状态
+* 像服务端设置非阻塞的状态，当listenfd设置后，如果队列没有可连接socket时，accpet会报EAGAIN，send(),recv()同样
 
- ## 暂存：tcpepoll的非阻塞边缘触发
+## 暂存：tcpepoll的非阻塞边缘触发
+
+## master分支作为项目实现
+* clion远程连接Linux：设置deployment的mapping目录为远程主机项目的根目录
