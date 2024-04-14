@@ -258,3 +258,7 @@
  * 像服务端设置非阻塞的状态，当listenfd设置后，如果队列没有可连接socket时，accpet会报EAGAIN，send(),recv()同样
 
  ## 暂存：tcpepoll的非阻塞边缘触发
+
+ ## 学习一些makefile和c11知识
+ * 写一个符合格式的makfefile，和认识更多的makefile写法
+ * c11的智能指针、类继承的一些关键字
