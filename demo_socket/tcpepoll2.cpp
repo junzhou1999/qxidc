@@ -23,7 +23,7 @@ bool initServer(int& listenfd, const unsigned short in_port);
 bool Accept(const int& listenfd, int& clientfd, struct sockaddr_in& clientaddr);
 
 // 设置socket的标志属于非阻塞
-int setNoBlock(int fd);
+int setNonBlocking(int fd);
 
 int main(int argc, char* argv[])
 {
@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
   }
 
   // 设置监听socket非阻塞，accept会返回-1
-  setNoBlock(listenfd);
+  setNonBlocking(listenfd);
 
   // 创建epoll句柄
   int epollfd = epoll_create(1); 
@@ -64,7 +64,9 @@ int main(int argc, char* argv[])
 
   const int MAX_EVENTS = 10;
   struct epoll_event evs[MAX_EVENTS];   // 声明epoll返回的事件数据结构体
+
 static int count;
+
   // 事件循环
   while(true)
   {
@@ -100,14 +102,15 @@ static int count;
         {
           // 有客户端连上来
           int clientfd;  struct sockaddr_in clientaddr;
-          if (Accept(listenfd, clientfd, clientaddr) == true)   break;
+          // 错误的话取下一次的监听结果
+          if (Accept(listenfd, clientfd, clientaddr) == false)   break;
 
           //测试并发的多个连接数
-          // cout << "第" << ++count << "个客户端连上了。\n";
+          cout << "第" << ++count << "个客户端连上了。\n";
           cout << "客户端（socket:" << clientfd <<  "）已连接。" << endl;
 
           // socket加入的操作，这里是clientfd加入监视
-          setNoBlock(clientfd);
+          setNonBlocking(clientfd);            // 通信的socket也属于非阻塞
           ev.data.fd = clientfd;
           ev.events = EPOLLIN|EPOLLET;
           epoll_ctl(epollfd, EPOLL_CTL_ADD, clientfd, &ev);
@@ -116,34 +119,78 @@ static int count;
       else 
       // 属于通信事件
       {
-        string buffer;  buffer.clear();  buffer.resize(1024);
-        while (true)
+        string buffer;  buffer.clear();  buffer.resize(1024);  // 报文buffer
+        int iret;        // 接收的内容结果
+        int readn = 0;   // 读了多少字节
+ 
+        while (true)     // 这个循环是应对epoll的边缘触发一次通知只能接收一次的
         {
-          // 接收报文失败情况
-          if (recv(evs[ii].data.fd, &buffer[0], 5, 0) <= 0)
+          // 一个循环里只接收5字节报文，测试多次循环接收边缘触发的报文
+          iret = recv(evs[ii].data.fd, &buffer[readn], 5, 0);
+
+          // 这是第一个版本
+          // if (iret == 0)
+          // {
+          //   cout << "客户端（socket:" << evs[ii].data.fd << "）已断开。\n"; 
+
+          //   close(evs[ii].data.fd);
+
+          //   break;
+          // }
+
+          // if (iret < 0)
+          // {
+          //   if (errno != EAGAIN)
+          //   {
+          //     cout << "客户端（socket:" << evs[ii].data.fd << "）已断开。\n"; 
+
+          //     close(evs[ii].data.fd);
+
+          //   }
+          //   cout << "接收：" << buffer << endl;
+
+          //   // buffer = "ok";
+          //   send(evs[ii].data.fd, buffer.data(), strlen(buffer.data()), 0);
+
+          //   break;
+          // }
+
+          if (iret <= 0)
           {
-            // 通信断开的一些操作
-            cout << "客户端（socket:" << evs[ii].data.fd << "）已断开。\n"; 
+            // 这是一个版本
+            // if (iret < 0 && errno == EAGAIN)
+            // {
+            //   cout << "接收：" << buffer << endl;
 
-            close(evs[ii].data.fd);
-            // 从epoll中删除客户端的socket，如果socket被关闭了，会自动从epollfd句柄中删除，多以以下代码可不启用
-            // epoll_ctl(epollfd, EPOLL_CTL_DEL, evs[ii].data.fd, NULL);
-          }
-        }
-        else
-        // 通信事件，接收报文成功
-        {
-          cout << "接收：" << buffer << endl;
+            //   buffer = "ok";   // ok报文
+            //   send(evs[ii].data.fd, buffer.data(), strlen(buffer.data()), 0);
+            // }
+            // else
+            // {
+            //   cout << "客户端（socket:" << evs[ii].data.fd << "）已断开。\n"; 
 
-          buffer = "ok";
-          if (send(evs[ii].data.fd, buffer.data(), strlen(buffer.data()), 0) <= 0)
-          {
-            cout << "客户端（socket:" << evs[ii].data.fd << "）已断开。\n"; 
+            //   close(evs[ii].data.fd);
+            // }
 
-            close(evs[ii].data.fd);
+            // 这是另一个版本
+            if (iret == 0 || (iret < 0 && errno != EAGAIN))
+            {
+              cout << "客户端（socket:" << evs[ii].data.fd << "）已断开。\n"; 
 
-          }
-          cout << "发送：" << buffer << endl; 
+              close(evs[ii].data.fd);
+            }
+            else               // 这个else是必须要的，需要连着前边的if语句判断EAGAIN
+            {                  // 缓冲区已没有资源了，可以读了
+              cout << "接收：" << buffer << endl;
+
+              buffer = "ok";   // ok报文
+              send(evs[ii].data.fd, buffer.data(), strlen(buffer.data()), 0);
+            }
+
+            break;             // 返回结果出错始终要退出循环
+          } // if (iret <= 0)
+
+          readn += iret;       // 接收成功的操作
         }
       }   // 监听or通信
     }     // 遍历epoll结构体数组
@@ -189,33 +236,32 @@ bool initServer(int& listenfd, const unsigned short in_port)
 }
 
 /**
- * 阻塞的监听端口accept()只能是EAGAIN才能跳出循环，代表队列中没有socket了
-*/
-
-
-/**
  * @brief 
  * 
  * @param listenfd 
  * @param clientfd 
  * @param clientaddr 
- * @return true 退出循环
- * @return false 继续循环，边缘触发还有监听的客户端没accept()处理
+ * @return true 继续循环，
+ * @return false 退出循环
  */
 bool Accept(const int& listenfd, int& clientfd, struct sockaddr_in& clientaddr)
 {
   int addrlen = sizeof(clientaddr);
-  if ((clientfd = accept(listenfd, (struct sockaddr*)&clientaddr, (socklen_t*)&addrlen)) < 0 && errno == EAGAIN)
-  {
-    // cout << "clientfd:" << clientfd << ",errno:" << errno << ",EAGAIN:" << EAGAIN <<endl;
-    return true;
-  }
+  clientfd = accept(listenfd, (struct sockaddr*)&clientaddr, (socklen_t*)&addrlen);
 
-  return false;
+  if (clientfd == -1)
+  {
+    if (errno != EAGAIN)  perror("accept");
+
+    // 其实无论如何返回什么错误码，返回错误的都要返回false，退出循环，寻求下一次的成功连接
+    return false;
+  }
+  
+  return true;
 }
 
 // 设置socket的标志属于非阻塞
-int setNoBlock(int fd)
+int setNonBlocking(int fd)
 {
   int flags;
 

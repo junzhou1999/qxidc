@@ -262,3 +262,9 @@
  ## 学习一些makefile和c11知识
  * 写一个符合格式的makfefile，和认识更多的makefile写法
  * c11的智能指针、类继承的一些关键字
+
+ ## tcpepoll的非阻塞边缘触发
+ * 完成：
+   * epoll的listenfd的非阻塞测试，sh tmp2.sh，300个socket连接请求都能完成处理
+   * epoll的recv的非阻塞测试，每一次只接收5字节报文，非阻塞测试能否取完所有的字节
+ * 非阻塞的socket，需要写循环判断errno，只要返回-1，再判断errno值，作相对应得处理

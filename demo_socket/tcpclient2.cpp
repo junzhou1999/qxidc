@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
   if (argc!=3)
   {
     cout << "Using: tcpclient ip port\n";
-    cout << "Example: ./tcpclient 192.168.0.74 5005\n\n";
+    cout << "Example: ./tcpclient2 192.168.0.74 5005\n\n";
     return -1;
   }
 
